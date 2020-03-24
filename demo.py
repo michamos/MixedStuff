@@ -7,12 +7,10 @@ Example: http://www-library.desy.de/lists/misc/slp99.html
 """
 def perform_inspire_search(query, facets=None, collection="literature"):
     """Perform the search query on INSPIRE.
-
     Args:
         query (str): the query to perform
         facets (dict): mapping of facet filters to values
         collection (str): collection to search in
-
     Yields:
         the json response for every record.
     """
@@ -40,6 +38,13 @@ def perform_inspire_search(query, facets=None, collection="literature"):
         for result in content["hits"]["hits"]:
             yield result
 
+def format_title(title):
+    # schema guarantees that if there's a subtitle, it's non-empty
+    if subtitle in title:
+        return "{title['title']}: {title['subtitle']}".format(title)
+    # schema guarantees that title is always there, so no need to check
+    return title['title']
+
 def get_conf_list(query):
     "print info about conferences"""
     
@@ -53,19 +58,11 @@ def get_conf_list(query):
         core = meta.get("core")
        
         # this should not get the alternative_titles:title
-        titles = []  
-        if meta.get("titles"):
-            for title in meta.get("titles"):
-                if title.get("title"):
-                    fulltitle = title.get("title")
-                else:
-                    fulltitle = ''
-                if title.get("subtitle"):
-                    fulltitle += ': %s' % title.get("subtitle")
-                titles.append(fulltitle)
-        title = '; '.join(titles) 
-        if meta.get("acronyms"):
-            title += ' (%s)' % (', '.join(meta.get("acronyms")), )
+        # You can pass a fallback as the second argument of dict.get.
+        # All this can now be done more concisely with a comprehension:
+        title = "; ".join(format_title(title_elem) for title_elem in meta.get("titles", []))
+        # Again, using a second argument for dict.get is useful here
+        title += ' (%s)' % (', '.join(meta.get("acronyms", [])), )
         print '\n%s - %s' % (recid, cnum)
         print title
 
